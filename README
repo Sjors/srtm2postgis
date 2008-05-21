@@ -1,0 +1,3 @@
+Script that imports the SRTM data in a PostGIS (PostgreSQL) database. I will use the source code of Srtm2Osm for inspiration. 
+
+http://wiki.openstreetmap.org/index.php/Route_altitude_profiles_SRTM#SRTM_import
