@@ -1,3 +1,33 @@
-Script that imports the SRTM data in a PostGIS (PostgreSQL) database. I will use the source code of Srtm2Osm for inspiration. 
+Script that imports the SRTM data in a PostGIS (PostgreSQL) database.  
 
 http://wiki.openstreetmap.org/index.php/Route_altitude_profiles_SRTM#SRTM_import
+
+Usage:
+First run the tests that come with this script:
+
+$ cd test
+$ python test_download.py
+$ cd ..
+
+Then download the SRTM source files (635 MB):
+
+$ python download.py
+
+Verify that the download went correctly:
+
+$ python verify_download.py
+
+Unzip the files (adds 3 GB):
+$ for f in `ls *.zip`; do unzip $f; done
+
+Create a PostGIS database (you may need to change some things here depending on 
+your system):
+
+$ createdb srtm
+$ createlang plpgsql srtm
+$ psql -d srtm -f /usr/share/postgresql-8.3-postgis/lwpostgis.sql
+$ psql -d srtm -f /usr/share/postgresql-8.3-postgis/spatial_ref_sys.sql
+
+Run test script:
+$ cd test
+$ python test_read_data.py
