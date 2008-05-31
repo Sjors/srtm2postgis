@@ -53,7 +53,7 @@ class TestDatabase(unittest.TestCase):
     self.assert_(True)
 
   def testDatabaseEmpty(self):
-    self.assert_(checkDatabaseEmpty(db))
+    self.assert_(checkDatabaseEmpty(self.db))
   
   def testTableAltitudeExists(self):
     # Call function to create table
@@ -62,6 +62,37 @@ class TestDatabase(unittest.TestCase):
     tables = self.db.get_tables()
     
     self.assert_('public.altitude' in tables) 
+
+  def testGetLatLonFromFileName(self):
+    self.assertEqual([-11,119], getLatLonFromFileName("S11E119"))
+    self.assertEqual([11,119], getLatLonFromFileName("N11E119"))
+    self.assertEqual([11,-119], getLatLonFromFileName("N11W119"))
+    self.assertEqual([-11,-119], getLatLonFromFileName("S11W119"))
+  
+  def testInsertTileIntoDatabase(self):
+    # Create table
+    self.assert_(createTableAltitude(self.db))
+    # Load example tile
+    tile = loadTile('S37E145')
+    tile = tile[0:11][0:11]
+    # Get lat and lon from filename
+    [lat,lon] = getLatLonFromFileName("S37E145")
+
+    # Make the tile smaller, so this will be faster:
+    # 11x11 tile: only the top-left 10x10 tile will be stored in the
+    # database.
+
+    # Insert tile into database
+    # We use psycopg2 for the connection in this case.
+    db_psycopg2 = connectToDatabasePsycopg2(database_test)
+    insertTileIntoDatabase(db_psycopg2, "srtm_test" , tile, lat, lon)
+
+    # Check if the tile is indeed in the database
+    tile_back = readTileFromDatabase(self.db, lat, lon)
+    print tile_back
+    for i in range(len(tile) - 1):
+      for j in range(len(tile) - 1):
+        self.assert_(tile_back[i][j] == tile[i][j])
 
   def tearDown(self):
     # Drop all tables that might have been created:
