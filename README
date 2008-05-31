@@ -28,6 +28,13 @@ $ createlang plpgsql srtm
 $ psql -d srtm -f /usr/share/postgresql-8.3-postgis/lwpostgis.sql
 $ psql -d srtm -f /usr/share/postgresql-8.3-postgis/spatial_ref_sys.sql
 
-Run test script:
-$ cd test
-$ python test_read_data.py
+Create a test database:
+
+$ createdb srtm_test
+$ createlang plpgsql srtm_test
+$ psql -d srtm_test -f /usr/share/postgresql-8.3-postgis/lwpostgis.sql
+$ psql -d srtm_test -f /usr/share/postgresql-8.3-postgis/spatial_ref_sys.sql
+
+Run script that reads filess and puts them in the database:
+$ python read_data.py
+

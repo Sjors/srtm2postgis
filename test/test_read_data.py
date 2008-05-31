@@ -1,5 +1,12 @@
+import sys
+import os
+import pg
+
 import unittest
-from osgeo import gdal, gdal_array
+sys.path += [os.path.abspath('.')]
+import database_test 
+
+from read_data import *
 
 class TestImportScript(unittest.TestCase):
     def testPointsPerTile(self):
@@ -35,9 +42,30 @@ class TestImportScript(unittest.TestCase):
       for i in range(1201):
         self.assertEqual(west[i][1200] - east[i][0],0) 
 
-def loadTile(filename):
-  srtm = gdal.Open('../data/Australia/' + filename + '.hgt')
-  return gdal_array.DatasetReadAsArray(srtm)
+class TestDatabase(unittest.TestCase):
+  def setUp(self):
+    self.db = connectToDatabase(database_test)
+    # Drop all tables
+    dropAllTables(self.db);
+
+  def testDatabasePresent(self):
+    # Already tested in setUp()
+    self.assert_(True)
+
+  def testDatabaseEmpty(self):
+    self.assert_(checkDatabaseEmpty(db))
+  
+  def testTableAltitudeExists(self):
+    # Call function to create table
+    createTableAltitude(self.db)
+
+    tables = self.db.get_tables()
+    
+    self.assert_('public.altitude' in tables) 
+
+  def tearDown(self):
+    # Drop all tables that might have been created:
+    dropAllTables(self.db);
 
 if __name__ == '__main__':
     unittest.main()
