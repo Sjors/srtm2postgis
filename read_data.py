@@ -126,12 +126,52 @@ def getLatLonFromFileName(name):
 
 if __name__ == '__main__':
   db = connectToDatabase(database) 
+  import verify_download
 
-  # Does the user want to empty the database first?
+  # Verify result?
+  if 'verify' in sys.argv:
+    # For every tile, verify the top left coordinate.
+    for file in verify_download.files_hashes:
+      # Strip .hgt.zip extension:
+      file = file[1][0:-8] 
+
+      [lat,lon] = getLatLonFromFileName(file)
+
+      # Get top left altitude from file:
+      coordinate_file = loadTile(file)[0][0]
+
+      # Get top left altitude from database:
+      sql = db.query(" \
+        SELECT \
+          alt \
+        FROM altitude \
+        WHERE \
+          lat = " + str(lat) + "\
+          AND lon = " + str(lon) + "\
+      ")
+      coordinate_db = int(sql.getresult()[0][0])
+      
+      if coordinate_db != coordinate_file:
+        print "Mismatch tile " + file[1]
+        exit() 
+
+    # Check the total number of points in the database:
+    sql = db.query("SELECT count(*) FROM altitude")
+    total = int(sql.getresult()[0][0])
+    if not total == len(verify_download.files_hashes) * 1200 * 1200:
+      print "Not all tiles have been (completely) inserted!"
+      exit()
+        
+    print "All tiles seem to have made it into the database! Enjoy."
+
+    exit()
+
+  # Does the user want to empty the database?
   if 'empty' in sys.argv:
     print "Deleting tables from databse..." 
     dropAllTables(db)
     print "Done..."
+    exit()
 
   # Make sure the database is empty before we start:
   if not checkDatabaseEmpty(db):
@@ -143,12 +183,20 @@ if __name__ == '__main__':
 
   createTableAltitude(db)
 
-  # Pick a tile
-  tile = loadTile('S11E119')
+  i = 0
+  for file in verify_download.files_hashes:
+    i = i + 1
+    # Strip .hgt.zip extension:
+    file = file[1][0:-8] 
+    # Get latitude and longitude from file name 
+    [lat,lon] = getLatLonFromFileName(file)
+    # Load tile from file
+    tile = loadTile(file)
 
-  print( "Get lat and lon from filename...")
-  [lat,lon] = getLatLonFromFileName("S11E119")
+    print("Insert data for tile " + file + " (" + str(i) + " / " + str(len(verify_download.files_hashes)) + ") ...")
 
-  print("Insert data...")
-  insertTileIntoDatabase(db_psycopg2, "srtm" , tile, lat, lon)
+    insertTileIntoDatabase(db_psycopg2, "srtm" , tile, lat, lon)
+
+  print("All tiles inserted. Pleasy verify the result with python \
+  read_data.py verify")
 

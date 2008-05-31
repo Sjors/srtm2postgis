@@ -35,6 +35,14 @@ $ createlang plpgsql srtm_test
 $ psql -d srtm_test -f /usr/share/postgresql-8.3-postgis/lwpostgis.sql
 $ psql -d srtm_test -f /usr/share/postgresql-8.3-postgis/spatial_ref_sys.sql
 
-Run script that reads filess and puts them in the database:
+Run script that reads files and puts them in the database.
+Test it first:
+
+$ python test/test_read_data.py
 $ python read_data.py
 
+Verify the result
+
+$ python read_data.py verify
+
+All altitude data should now be in the table 'altitude'. Enjoy.

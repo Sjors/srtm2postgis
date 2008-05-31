@@ -1078,10 +1078,11 @@ files_hashes = [
   ["9ea403471bf80040713944c2a81afa38", "S44E148.hgt.zip"] 
 ]
 
-for file_hash in files_hashes:
-  f = file("data/Australia/" + file_hash[1])
-  if(not hashlib.md5(f.read()).hexdigest() == file_hash[0]):
-    print "Error in file " + file_hash[1]
-    exit()
+if __name__ == '__main__':
+  for file_hash in files_hashes:
+    f = file("data/Australia/" + file_hash[1])
+    if(not hashlib.md5(f.read()).hexdigest() == file_hash[0]):
+      print "Error in file " + file_hash[1]
+      exit()
     
   
