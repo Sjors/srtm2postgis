@@ -15,10 +15,9 @@ def loadTile(filename):
 def createTableAltitude(db):
   db.query(" \
     CREATE TABLE altitude ( \
-      lat double precision NOT NULL, \
-      lon double precision NOT NULL, \
-      alt double precision NULL , \
-      PRIMARY KEY ( lat, lon ) \
+      pos bigint NOT NULL, \
+      alt int NULL , \
+      PRIMARY KEY ( pos ) \
     ); \
   ")
   return True
@@ -38,17 +37,24 @@ def checkDatabaseEmpty(db):
     # Test is the test database is as we expect it after setUp:
     return db.get_tables() == ['information_schema.sql_features', 'information_schema.sql_implementation_info', 'information_schema.sql_languages', 'information_schema.sql_packages', 'information_schema.sql_parts', 'information_schema.sql_sizing', 'information_schema.sql_sizing_profiles', 'public.geometry_columns', 'public.spatial_ref_sys']
 
+def posFromLatLon(lat,lon):
+  return (-lat * 360 + lon) * 1200 * 1200
+
 def insertTileIntoDatabase(cur, db_name, tile, lat0, lon0):
   # I use the Psycopg2 connection, with its copy_to and 
   # copy_from commands, which use the more efficient COPY command. 
   # This method requires a temporary file.
+
+  # Calculate begin position
+  begin = posFromLatLon(lat0,lon0)
   
   # First we write the data into a temporary file.
   f = open('/tmp/tempcopy', 'w')
   for row in range(len(tile) - 1):
     for col in range(len(tile) - 1):
-      f.write(str(lat0 - float(row)/1200.) + "\t" + str(lon0 + float(col)/1200.) + "\t" + str(tile[row][col] ) + "\n")
-  
+      f.write(str(\
+      begin + row * 1200 + col\
+      ) + "\t" + str(tile[row][col] ) + "\n")
 
   f.close() 
 
@@ -75,16 +81,17 @@ def insertTileIntoDatabase(cur, db_name, tile, lat0, lon0):
   f.close
         
 def readTileFromDatabase(db, lat0, lon0):
+  # Calculate begin and end position
+  begin = posFromLatLon(lat0,lon0)
+  end = posFromLatLon(lat0 -1, lon0 + 1)
   sql = db.query(" \
     SELECT \
       alt \
     FROM altitude \
     WHERE \
-      lat <= " + str(lat0) + "\
-      AND lat > " + str(lat0 -1) + "\
-      AND lon >= " + str(lon0) + "\
-      AND lon < " + str(lon0 + 1) + "\
-    ORDER BY lat DESC, lon ASC \
+      pos >= " + str(begin) + "\
+      AND pos < " + str(end) + "\
+    ORDER BY pos ASC \
   ")
   res = sql.getresult()
   
@@ -134,31 +141,40 @@ if __name__ == '__main__':
     for file in verify_download.files_hashes:
       # Strip .hgt.zip extension:
       file = file[1][0:-8] 
+      print "Verify " + file + "..." 
 
       [lat,lon] = getLatLonFromFileName(file)
-
-      # Get top left altitude from file:
-      coordinate_file = loadTile(file)[0][0]
-
-      # Get top left altitude from database:
-      sql = db.query(" \
-        SELECT \
-          alt \
-        FROM altitude \
-        WHERE \
-          lat = " + str(lat) + "\
-          AND lon = " + str(lon) + "\
-      ")
-      coordinate_db = int(sql.getresult()[0][0])
       
-      if coordinate_db != coordinate_file:
-        print "Mismatch tile " + file[1]
-        exit() 
+      # Only a smaller part of Australia (see below):
+      if lat <= -26 and lat > -45 and lon >= 141 and lon < 155:
+
+        # Get top left altitude from file:
+        coordinate_file = loadTile(file)[0][0]
+
+        # Get top left altitude from database:
+        pos = posFromLatLon(lat,lon)
+        sql = db.query(" \
+          SELECT \
+            alt \
+          FROM altitude \
+          WHERE \
+            pos = " + str(pos) + "\
+        ")
+        coordinate_db = int(sql.getresult()[0][0])
+        
+        if coordinate_db != coordinate_file:
+          print "Mismatch tile " + file[1]
+          exit() 
 
     # Check the total number of points in the database:
-    sql = db.query("SELECT count(*) FROM altitude")
+    
+    # Because I am only importing a smaller part of Australia,
+    # I expect 186 in stead of 1060 tiles.
+    number_of_tiles = 186
+
+    sql = db.query("SELECT count(pos) FROM altitude")
     total = int(sql.getresult()[0][0])
-    if not total == len(verify_download.files_hashes) * 1200 * 1200:
+    if not total == number_of_tiles * 1200 * 1200:
       print "Not all tiles have been (completely) inserted!"
       exit()
         
@@ -184,18 +200,26 @@ if __name__ == '__main__':
   createTableAltitude(db)
 
   i = 0
+  number_of_tiles = 186
   for file in verify_download.files_hashes:
-    i = i + 1
     # Strip .hgt.zip extension:
     file = file[1][0:-8] 
     # Get latitude and longitude from file name 
     [lat,lon] = getLatLonFromFileName(file)
-    # Load tile from file
-    tile = loadTile(file)
 
-    print("Insert data for tile " + file + " (" + str(i) + " / " + str(len(verify_download.files_hashes)) + ") ...")
+    # For now I am only importing part of Australia, to save space. 
+    # (-26,141) - (-45, 155) or the part of Australia south east of the 
+    # north eastern corner of South Australia. Basicly the southern 
+    # part of Queensland, all of NSW, ACT, Victoria and Tasmania. 
+    if lat <= -26 and lat > -45 and lon >= 141 and lon < 155:
+      i = i + 1
 
-    insertTileIntoDatabase(db_psycopg2, "srtm" , tile, lat, lon)
+      # Load tile from file
+      tile = loadTile(file)
+
+      print("Insert data for tile " + file + " (" + str(i) + " / " + str(number_of_tiles) + ") ...")
+
+      insertTileIntoDatabase(db_psycopg2, "srtm" , tile, lat, lon)
 
   print("All tiles inserted. Pleasy verify the result with python \
   read_data.py verify")

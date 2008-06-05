@@ -68,6 +68,13 @@ class TestDatabase(unittest.TestCase):
     self.assertEqual([11,119], getLatLonFromFileName("N11E119"))
     self.assertEqual([11,-119], getLatLonFromFileName("N11W119"))
     self.assertEqual([-11,-119], getLatLonFromFileName("S11W119"))
+
+  def testPosFromLatLon(self):
+    self.assertEqual(posFromLatLon(0,0),0) 
+    self.assertEqual(posFromLatLon(0,1),1200*1200) 
+    self.assertEqual(posFromLatLon(0,2),1200*1200*2) 
+    self.assertEqual(posFromLatLon(1,0),-1200*1200*360) 
+    self.assertEqual(posFromLatLon(0,-1),-1200*1200) 
   
   def testInsertTileIntoDatabase(self):
     # Create table
@@ -89,7 +96,6 @@ class TestDatabase(unittest.TestCase):
 
     # Check if the tile is indeed in the database
     tile_back = readTileFromDatabase(self.db, lat, lon)
-    print tile_back
     for i in range(len(tile) - 1):
       for j in range(len(tile) - 1):
         self.assert_(tile_back[i][j] == tile[i][j])
