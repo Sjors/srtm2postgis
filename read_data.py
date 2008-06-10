@@ -38,7 +38,7 @@ def checkDatabaseEmpty(db):
     return db.get_tables() == ['information_schema.sql_features', 'information_schema.sql_implementation_info', 'information_schema.sql_languages', 'information_schema.sql_packages', 'information_schema.sql_parts', 'information_schema.sql_sizing', 'information_schema.sql_sizing_profiles', 'public.geometry_columns', 'public.spatial_ref_sys']
 
 def posFromLatLon(lat,lon):
-  return (-lat * 360 + lon) * 1200 * 1200
+  return (lat * 360 + lon) * 1200 * 1200
 
 def insertTileIntoDatabase(cur, db_name, tile, lat0, lon0):
   # I use the Psycopg2 connection, with its copy_to and 
@@ -47,13 +47,14 @@ def insertTileIntoDatabase(cur, db_name, tile, lat0, lon0):
 
   # Calculate begin position
   begin = posFromLatLon(lat0,lon0)
-  
+
   # First we write the data into a temporary file.
   f = open('/tmp/tempcopy', 'w')
-  for row in range(len(tile) - 1):
-    for col in range(len(tile) - 1):
+  # We drop the top row and right column.
+  for row in range(1, len(tile)):
+    for col in range(0, len(tile) - 1):
       f.write(str(\
-      begin + row * 1200 + col\
+      begin + (row-1) * 1200 + col\
       ) + "\t" + str(tile[row][col] ) + "\n")
 
   f.close() 
@@ -83,7 +84,7 @@ def insertTileIntoDatabase(cur, db_name, tile, lat0, lon0):
 def readTileFromDatabase(db, lat0, lon0):
   # Calculate begin and end position
   begin = posFromLatLon(lat0,lon0)
-  end = posFromLatLon(lat0 -1, lon0 + 1)
+  end = posFromLatLon(lat0 + 1, lon0 + 1)
   sql = db.query(" \
     SELECT \
       alt \
@@ -137,7 +138,7 @@ if __name__ == '__main__':
 
   # Verify result?
   if 'verify' in sys.argv:
-    # For every tile, verify the top left coordinate.
+    # For every tile, verify the bottom left coordinate.
     for file in verify_download.files_hashes:
       # Strip .hgt.zip extension:
       file = file[1][0:-8] 

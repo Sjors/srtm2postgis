@@ -11,7 +11,7 @@ from read_data import *
 class TestImportScript(unittest.TestCase):
     def testPointsPerTile(self):
       data = loadTile('S11E119')
-      self.assertEqual(data.size,1201*1201)
+      self.assertEqual(len(data) * len(data[0]),1201*1201)
     
     def testFirstNumber(self):
       data = loadTile('S11E119')
@@ -41,6 +41,30 @@ class TestImportScript(unittest.TestCase):
 
       for i in range(1201):
         self.assertEqual(west[i][1200] - east[i][0],0) 
+
+      # Also try for north - south boundary:
+      north = loadTile("S36E144")
+      south = loadTile("S37E144")
+      
+      for i in range(1201):
+        self.assertEqual(north[1200][i] - south[0][i],0) 
+
+      # Some other area north - south boundary:
+      south = loadTile("S33E147")
+      north = loadTile("S32E147")
+
+      for i in range(1201):
+        self.assertEqual(north[1200][i] - south[0][i],0) 
+
+      # Some other area west - east boundary:
+      west = loadTile("S33E147")
+
+      ## Melbourne (East):
+      east = loadTile("S33E148")
+
+      for i in range(1201):
+        self.assertEqual(west[i][1200] - east[i][0],0) 
+
 
 class TestDatabase(unittest.TestCase):
   def setUp(self):
@@ -73,8 +97,9 @@ class TestDatabase(unittest.TestCase):
     self.assertEqual(posFromLatLon(0,0),0) 
     self.assertEqual(posFromLatLon(0,1),1200*1200) 
     self.assertEqual(posFromLatLon(0,2),1200*1200*2) 
-    self.assertEqual(posFromLatLon(1,0),-1200*1200*360) 
+    self.assertEqual(posFromLatLon(1,0),1200*1200*360) 
     self.assertEqual(posFromLatLon(0,-1),-1200*1200) 
+    self.assertEqual(posFromLatLon(-37,145),(-37 * 360 + 145) * 1200 * 1200) 
   
   def testInsertTileIntoDatabase(self):
     # Create table
@@ -86,7 +111,8 @@ class TestDatabase(unittest.TestCase):
     [lat,lon] = getLatLonFromFileName("S37E145")
 
     # Make the tile smaller, so this will be faster:
-    # 11x11 tile: only the top-left 10x10 tile will be stored in the
+    # 11x11 tile: because the top row and right column are dropped,
+    # only the bottom-left 10x10 tile will be stored in the
     # database.
 
     # Insert tile into database
@@ -98,7 +124,7 @@ class TestDatabase(unittest.TestCase):
     tile_back = readTileFromDatabase(self.db, lat, lon)
     for i in range(len(tile) - 1):
       for j in range(len(tile) - 1):
-        self.assert_(tile_back[i][j] == tile[i][j])
+        self.assert_(tile_back[i][j] == tile[i+1][j])
 
   def tearDown(self):
     # Drop all tables that might have been created:
