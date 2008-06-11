@@ -135,6 +135,11 @@ def getLatLonFromFileName(name):
 if __name__ == '__main__':
   db = connectToDatabase(database) 
   import verify_download
+  
+  if 'limit' in sys.argv:
+      number_of_tiles = 186
+  else:
+      number_of_tiles = 1060
 
   # Verify result?
   if 'verify' in sys.argv:
@@ -142,12 +147,13 @@ if __name__ == '__main__':
     for file in verify_download.files_hashes:
       # Strip .hgt.zip extension:
       file = file[1][0:-8] 
-      print "Verify " + file + "..." 
 
       [lat,lon] = getLatLonFromFileName(file)
       
       # Only a smaller part of Australia (see below):
-      if lat <= -26 and lat > -45 and lon >= 141 and lon < 155:
+      if ((not 'limit' in sys.argv) or (lat <= -26 and lat > -45 and lon >= 141 and lon < 155)):
+      
+        print "Verify " + file + "..." 
 
         # Get top left altitude from file:
         coordinate_file = loadTile(file)[0][0]
@@ -169,10 +175,6 @@ if __name__ == '__main__':
 
     # Check the total number of points in the database:
     
-    # Because I am only importing a smaller part of Australia,
-    # I expect 186 in stead of 1060 tiles.
-    number_of_tiles = 186
-
     sql = db.query("SELECT count(pos) FROM altitude")
     total = int(sql.getresult()[0][0])
     if not total == number_of_tiles * 1200 * 1200:
@@ -201,7 +203,7 @@ if __name__ == '__main__':
   createTableAltitude(db)
 
   i = 0
-  number_of_tiles = 186
+
   for file in verify_download.files_hashes:
     # Strip .hgt.zip extension:
     file = file[1][0:-8] 
@@ -212,7 +214,7 @@ if __name__ == '__main__':
     # (-26,141) - (-45, 155) or the part of Australia south east of the 
     # north eastern corner of South Australia. Basicly the southern 
     # part of Queensland, all of NSW, ACT, Victoria and Tasmania. 
-    if lat <= -26 and lat > -45 and lon >= 141 and lon < 155:
+    if ((not 'limit' in sys.argv) or (lat <= -26 and lat > -45 and lon >= 141 and lon < 155)):
       i = i + 1
 
       # Load tile from file
