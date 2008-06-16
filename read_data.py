@@ -194,10 +194,18 @@ if __name__ == '__main__':
     print "Done..."
     exit()
 
-  # Make sure the database is empty before we start:
-  if not checkDatabaseEmpty(db):
-    print "Database is not empty. Run 'read_data empty' to empty it first."
-    exit()
+  # If a tile name is given as the first argument it will resume from there.
+  p = re.compile('[NSEW]\d*')
+  print sys.argv
+  if(p.find(sys.argv[1])):
+    resume_from = sys.argv[1]
+  else: 
+    resume_from = ""
+  
+    # Make sure the database is empty before we start:
+    if not checkDatabaseEmpty(db):
+      print "Database is not empty. Run 'read_data empty' to empty it first."
+      exit()
   
   # Second database connection with psychopg2 
   db_psycopg2 = connectToDatabasePsycopg2(database)
@@ -206,14 +214,6 @@ if __name__ == '__main__':
 
   i = 0
 
-  # If a tile name is given as the first argument it will resume from there.
-  
-  p = re.compile('[NSEW]\d*')
-  if(p.find(argv[1])):
-    resume_from = argv[1]
-  else: 
-    resume_from = ""
-  
   for file in verify_download.files_hashes:
     # Strip .hgt.zip extension:
     file = file[1][0:-8] 
