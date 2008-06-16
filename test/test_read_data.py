@@ -105,8 +105,12 @@ class TestDatabase(unittest.TestCase):
     # Create table
     self.assert_(createTableAltitude(self.db))
     # Load example tile
-    tile = loadTile('S37E145')
-    tile = tile[0:11][0:11]
+    fulltile = loadTile('S37E145')
+    tile = []
+    for row in fulltile[0:11]:
+      tile.append(row[0:11])
+
+    print tile
     # Get lat and lon from filename
     [lat,lon] = getLatLonFromFileName("S37E145")
 
@@ -117,6 +121,33 @@ class TestDatabase(unittest.TestCase):
 
     # Insert tile into database
     # We use psycopg2 for the connection in this case.
+    db_psycopg2 = connectToDatabasePsycopg2(database_test)
+    insertTileIntoDatabase(db_psycopg2, "srtm_test" , tile, lat, lon)
+
+    # Check if the tile is indeed in the database
+    tile_back = readTileFromDatabase(self.db, lat, lon)
+    for i in range(len(tile) - 1):
+      for j in range(len(tile) - 1):
+        self.assert_(tile_back[i][j] == tile[i+1][j])
+  
+  def testInsertTileWithNull(self):
+    # Create table
+    self.assert_(createTableAltitude(self.db))
+
+    # Some tiles contain the value -32768, which means NULL (not implemented yet)
+    # Tile S27E123 has several -32768 values, for example tile[1086][462]
+    fulltile = loadTile('S27E123')
+    self.assertEqual(fulltile[1086][462], -32768)
+
+    # Take part of the tile around that area
+    tile = []
+    for row in fulltile[1080:1091]:
+      tile.append(row[460:471])
+
+    # Get lat and lon from filename
+    [lat,lon] = getLatLonFromFileName("S27E123")
+
+    # Insert tile into database
     db_psycopg2 = connectToDatabasePsycopg2(database_test)
     insertTileIntoDatabase(db_psycopg2, "srtm_test" , tile, lat, lon)
 

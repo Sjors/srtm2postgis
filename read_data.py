@@ -206,6 +206,14 @@ if __name__ == '__main__':
 
   i = 0
 
+  # If a tile name is given as the first argument it will resume from there.
+  
+  p = re.compile('[NSEW]\d*')
+  if(p.find(argv[1])):
+    resume_from = argv[1]
+  else: 
+    resume_from = ""
+  
   for file in verify_download.files_hashes:
     # Strip .hgt.zip extension:
     file = file[1][0:-8] 
@@ -218,13 +226,19 @@ if __name__ == '__main__':
     # part of Queensland, all of NSW, ACT, Victoria and Tasmania. 
     if ((not 'limit' in sys.argv) or (lat <= -26 and lat > -45 and lon >= 141 and lon < 155)):
       i = i + 1
+  
+      # Are we resuming?
+      if resume_from == file:
+        resume_from = "" 
+      
+      if resume_from == "":
 
-      # Load tile from file
-      tile = loadTile(file)
+        # Load tile from file
+        tile = loadTile(file)
 
-      print("Insert data for tile " + file + " (" + str(i) + " / " + str(number_of_tiles) + ") ...")
+        print("Insert data for tile " + file + " (" + str(i) + " / " + str(number_of_tiles) + ") ...")
 
-      insertTileIntoDatabase(db_psycopg2, "srtm" , tile, lat, lon)
+        insertTileIntoDatabase(db_psycopg2, "srtm" , tile, lat, lon)
 
   print("All tiles inserted. Pleasy verify the result with python \
   read_data.py verify")
