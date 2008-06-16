@@ -110,7 +110,6 @@ class TestDatabase(unittest.TestCase):
     for row in fulltile[0:11]:
       tile.append(row[0:11])
 
-    print tile
     # Get lat and lon from filename
     [lat,lon] = getLatLonFromFileName("S37E145")
 
