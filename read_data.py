@@ -156,7 +156,7 @@ if __name__ == '__main__':
         print "Verify " + file + "..." 
 
         # Get top left altitude from file:
-        coordinate_file = loadTile(file)[0][0]
+        coordinate_file = loadTile(file)[1][0]
 
         # Get top left altitude from database:
         pos = posFromLatLon(lat,lon)
@@ -174,6 +174,8 @@ if __name__ == '__main__':
           exit() 
 
     # Check the total number of points in the database:
+
+    print "Check the total number of points in the database..."
     
     sql = db.query("SELECT count(pos) FROM altitude")
     total = int(sql.getresult()[0][0])
