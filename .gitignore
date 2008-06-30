@@ -2,3 +2,5 @@ commit.msg
 *.swp
 *.pyc
 database.py
+POSTGIS
+MYSQL
