@@ -4,6 +4,8 @@ import pg
 
 import unittest
 sys.path += [os.path.abspath('.')]
+sys.path += [os.path.abspath('.') + "/src"]
+
 import database_test 
 
 from read_data import *
@@ -161,4 +163,10 @@ class TestDatabase(unittest.TestCase):
     dropAllTables(self.db);
 
 if __name__ == '__main__':
+  # We will only do this for a PostGIS database:
+    
+  try:
+    file("POSTGIS")
     unittest.main()
+  except:
+    print "Only tests for PostGIS database at the moment."

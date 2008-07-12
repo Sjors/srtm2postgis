@@ -5,17 +5,22 @@ http://wiki.openstreetmap.org/index.php/Route_altitude_profiles_SRTM#SRTM_import
 Usage:
 First run the tests that come with this script:
 
-$ cd test
-$ python test_download.py
-$ cd ..
+python test/test_download.py
 
-Then download the SRTM source files (635 MB):
+Then download the SRTM source files (635 MB for Australia):
 
-$ python download.py
+$ python download.py continent
+
+(replace continent by Africa, Australia, Eurasia, Islands, 
+North_America or South_America.
+
+Second argument (optional) specifies from which tile to resume. 
+Use full file name e.g. 'N36W004.hgt.zip'. Set to 0 start at the first file. 
+Argument 3-6 optionally specify a bounding box: north, south, west, east.
 
 Verify that the download went correctly:
 
-$ python verify_download.py
+python test/verify_download.py continent
 
 Unzip the files (adds 3 GB):
 $ for f in `ls *.zip`; do unzip $f; done
@@ -39,10 +44,10 @@ Run script that reads files and puts them in the database.
 Test it first:
 
 $ python test/test_read_data.py
-$ python read_data.py
+$ python read_data.py continent
 
 Verify the result
 
-$ python read_data.py verify
+$ python read_data.py continent verify 
 
 All altitude data should now be in the table 'altitude'. Enjoy.
