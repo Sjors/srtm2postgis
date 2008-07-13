@@ -8,7 +8,7 @@ from math import sqrt
 
 # Main functions
 
-def loadTile(filename):
+def loadTile(continent, filename):
   srtm = gdal.Open('data/Australia/' + filename + '.hgt')
   return gdal_array.DatasetReadAsArray(srtm)
 
