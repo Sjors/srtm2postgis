@@ -69,27 +69,32 @@ def main():
     
     ftp.close()
 
-    print len(files)
-    exit()
-    
     # Now download all files using urllib.urlretrieve
     
     # Determine if we need to resume at a certain point
-    if(len(sys.argv) > 1):
-        resume = argv[1]
-        skip = True     
+    if(len(sys.argv) > 2):
+        resume = sys.argv[2]
+        if not(resume == "0"):
+            skip = True     
+            print "Resume from " + resume + "..."
+        else:
+            skip = False
+    else: 
+        skip = False
 
     # Do we have a bounding box?
-    if len(sys.argv) == 6:
-        north = sys.argv[2]
-        south = sys.argv[3]
-        west = sys.argv[4]
-        east = sys.argv[5]
+    if len(sys.argv) == 7:
+        north = int(sys.argv[3])
+        south = int(sys.argv[4])
+        west = int(sys.argv[5])
+        east = int(sys.argv[6])
+        print "Bounding box " + str(south) + " <= lat <= " + str(north) + " and " +  str(west) + " <= lon <= " + str(east) + "."  
+
     else:
         north = 90
         south = -90
-        east = -180
-        west = 180
+        west = -180
+        east = 180
     
     for i in range(len(files)):
       if skip:
@@ -98,9 +103,9 @@ def main():
           
       if not(skip):
           [lat,lon] = getLatLonFromFileName(files[i])
-          if(south <= lat and lat <=north and west <= lon and lon <= east):
+          if(south <= lat and lat <= north and west <= lon and lon <= east):
             print "Downloading " + files[i] + " (lat = " + str(lat)  + " , lon = " + str(lon) + " )... (" + str(i + 1) + " of " + str(len(files)) +")"
-            urllib.urlretrieve("ftp://e0srp01u.ecs.nasa.gov/srtm/version2/SRTM3/Eurasia/" + files[i],"data/" + continent + "/" + files[i])
+            urllib.urlretrieve("ftp://e0srp01u.ecs.nasa.gov/srtm/version2/SRTM3/" + continent + "/"  + files[i],"../data/" + continent + "/" + files[i])
             
 if __name__ == '__main__':            
     main()
