@@ -9,7 +9,7 @@ from math import sqrt
 # Main functions
 
 def loadTile(continent, filename):
-  srtm = gdal.Open('data/Australia/' + filename + '.hgt')
+  srtm = gdal.Open('data/' + continent + '/' + filename + '.hgt')
   return gdal_array.DatasetReadAsArray(srtm)
 
 def createTableAltitude(db):
@@ -28,7 +28,6 @@ def connectToDatabase(database):
 def connectToDatabasePsycopg2(database):
     conn = psycopg2.connect("dbname='" + database.db + "' host='localhost' user='" + database.db_user + "' password='" + database.db_pass + "'")
     return conn.cursor()
-      
 
 def dropAllTables(db):
     db.query("DROP TABLE IF EXISTS altitude;")
@@ -132,32 +131,22 @@ def getLatLonFromFileName(name):
 
   return [lat,lon]
 
-if __name__ == '__main__':
-  db = connectToDatabase(database) 
-  import verify_download
-  
-  if 'limit' in sys.argv:
-      number_of_tiles = 186
-  else:
-      number_of_tiles = 1060
-
-  # Verify result?
-  if 'verify' in sys.argv:
+def verify(continent, north, south, west, east):
     # For every tile, verify the bottom left coordinate.
     for file in verify_download.files_hashes:
       # Strip .hgt.zip extension:
       file = file[1][0:-8] 
-
+    
       [lat,lon] = getLatLonFromFileName(file)
       
       # Only a smaller part of Australia (see below):
       if ((not 'limit' in sys.argv) or (lat <= -26 and lat > -45 and lon >= 141 and lon < 155)):
       
         print "Verify " + file + "..." 
-
+    
         # Get top left altitude from file:
         coordinate_file = loadTile(file)[1][0]
-
+    
         # Get top left altitude from database:
         pos = posFromLatLon(lat,lon)
         sql = db.query(" \
@@ -172,9 +161,9 @@ if __name__ == '__main__':
         if coordinate_db != coordinate_file:
           print "Mismatch tile " + file[1]
           exit() 
-
+    
     # Check the total number of points in the database:
-
+    
     print "Check the total number of points in the database..."
     
     sql = db.query("SELECT count(pos) FROM altitude")
@@ -184,8 +173,39 @@ if __name__ == '__main__':
       exit()
         
     print "All tiles seem to have made it into the database! Enjoy."
-
+    
     exit()
+
+def main():
+  db = connectToDatabase(database) 
+  import verify_download
+  
+  try:
+      continent = sys.argv[1]
+      
+  except: 
+      print "Please specify the continent. Africa, Australia, Eurasia, Islands, North_America or South_America."
+
+  try:
+    north = int(sys.argv[3])
+    south = int(sys.argv[4])
+    west = int(sys.argv[5])
+    east = int(sys.argv[6])
+    print "Bounding box " + str(south) + " <= lat <= " + str(north) + " and " +  str(west) + " <= lon <= " + str(east) + "."  
+
+  except:
+    north = 90
+    south = -90
+    west = -180
+    east = 180
+    
+  files_hashes = data.util.getFilesHashes(continent)
+  
+  number_of_files = data.util.numberOfFiles(files_hashes, north, south, west, east)
+  
+  # Verify result?
+  if 'verify' in sys.argv:
+    verify(continent, north, south, west, east)
 
   # Does the user want to empty the database?
   if 'empty' in sys.argv:
@@ -194,11 +214,10 @@ if __name__ == '__main__':
     print "Done..."
     exit()
 
-  # If a tile name is given as the first argument it will resume from there.
+  # If a tile name is given as the sixth argument it will resume from there.
   p = re.compile('[NSEW]\d*')
-  print sys.argv
-  if(p.find(sys.argv[1])):
-    resume_from = sys.argv[1]
+  if(p.find(sys.argv[6])):
+    resume_from = sys.argv[6]
   else: 
     resume_from = ""
   
@@ -220,11 +239,7 @@ if __name__ == '__main__':
     # Get latitude and longitude from file name 
     [lat,lon] = getLatLonFromFileName(file)
 
-    # For now I am only importing part of Australia, to save space. 
-    # (-26,141) - (-45, 155) or the part of Australia south east of the 
-    # north eastern corner of South Australia. Basicly the southern 
-    # part of Queensland, all of NSW, ACT, Victoria and Tasmania. 
-    if ((not 'limit' in sys.argv) or (lat <= -26 and lat > -45 and lon >= 141 and lon < 155)):
+    if lat <= north and lat > south and lon >= west and lon < east:
       i = i + 1
   
       # Are we resuming?
@@ -243,3 +258,6 @@ if __name__ == '__main__':
   print("All tiles inserted. Pleasy verify the result with python \
   read_data.py verify")
 
+
+if __name__ == '__main__':
+  main()
