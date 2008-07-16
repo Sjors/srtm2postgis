@@ -1,3 +1,10 @@
+# List of file names and MD5 hashes:
+# Created as follows:
+# $ md5 * > md5
+# $ vim md5
+# %s/\(\x*\)\t\(.*\)/["\1", "\2"], /
+# Remove trailing comma and enclose list in [].
+
 Africa = [
     ["7106726fcd879f24d9ff15123cf4053f", "N00E006.hgt.zip"], 
     ["25bc5a0f9f435f1976b8516c7f86abc0", "N00E009.hgt.zip"], 

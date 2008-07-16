@@ -6,28 +6,11 @@ import urllib
 import re
 import sys
 
+from data import util
+
 def handleDownload(block):
     file.write(block)
     print ".",
-
-def getLatLonFromFileName(name):
-  # Split up in lat and lon:
-  p = re.compile('[NSEW]\d*')
-  [lat_str, lon_str] = p.findall(name)
-
-  # North or south?
-  if lat_str[0] == "N":
-    lat = int(lat_str[1:])
-  else: 
-    lat = -int(lat_str[1:])
-  
-  # East or west?
-  if lon_str[0] == "E":
-    lon = int(lon_str[1:])
-  else: 
-    lon = -int(lon_str[1:])
-
-  return [lat,lon]
 
 def main():
     # First we make a list of all files that need to be download. This depends
@@ -42,9 +25,7 @@ def main():
 
     if len(sys.argv) > 1:
         continent = sys.argv[1]
-        if not continent in ["Africa", "Australia", "Eurasia",  "Islands", "North_America", "South_America"]:
-            print "First argument should be Africa, Australia, Eurasia, Islands, North_America or South_America."
-            exit()
+        util.verifyIsContinent(continent)
     else:
         print "Please provide arguments \n",\
         "First argument should be Africa, Australia, Eurasia, Islands, North_America or South_America.\n",\
@@ -83,29 +64,17 @@ def main():
         skip = False
 
     # Do we have a bounding box?
-    if len(sys.argv) == 7:
-        north = int(sys.argv[3])
-        south = int(sys.argv[4])
-        west = int(sys.argv[5])
-        east = int(sys.argv[6])
-        print "Bounding box " + str(south) + " <= lat <= " + str(north) + " and " +  str(west) + " <= lon <= " + str(east) + "."  
-
-    else:
-        north = 90
-        south = -90
-        west = -180
-        east = 180
-    
+    [north, south, west, east] = util.getBoundingBox(sys.argv, 3)
     for i in range(len(files)):
       if skip:
           if files[i] == resume:
               skip = False
           
       if not(skip):
-          [lat,lon] = getLatLonFromFileName(files[i])
-          if(south <= lat and lat <= north and west <= lon and lon <= east):
+          [lat,lon] = util.getLatLonFromFileName(files[i])
+          if util.inBoundingBox(lat, lon, north, south, west, east):
             print "Downloading " + files[i] + " (lat = " + str(lat)  + " , lon = " + str(lon) + " )... (" + str(i + 1) + " of " + str(len(files)) +")"
-            urllib.urlretrieve("ftp://e0srp01u.ecs.nasa.gov/srtm/version2/SRTM3/" + continent + "/"  + files[i],"../data/" + continent + "/" + files[i])
+            urllib.urlretrieve("ftp://e0srp01u.ecs.nasa.gov/srtm/version2/SRTM3/" + continent + "/"  + files[i],"data/" + continent + "/" + files[i])
             
 if __name__ == '__main__':            
     main()

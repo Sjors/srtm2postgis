@@ -3,8 +3,11 @@ import pg, psycopg2
 from osgeo import gdal, gdal_array
 import database 
 import sys
-import re
 from math import sqrt
+
+import re
+
+from data import util
 
 # Main functions
 
@@ -13,13 +16,16 @@ def loadTile(continent, filename):
   return gdal_array.DatasetReadAsArray(srtm)
 
 def createTableAltitude(db):
-  db.query(" \
-    CREATE TABLE altitude ( \
-      pos bigint NOT NULL, \
-      alt int NULL , \
-      PRIMARY KEY ( pos ) \
-    ); \
-  ")
+  tables = db.get_tables()
+    
+  if not('public.altitude' in tables): 
+    db.query(" \
+      CREATE TABLE altitude ( \
+        pos bigint NOT NULL, \
+        alt int NULL , \
+        PRIMARY KEY ( pos ) \
+      ); \
+    ")
   return True
   
 def connectToDatabase(database):
@@ -38,6 +44,17 @@ def checkDatabaseEmpty(db):
 
 def posFromLatLon(lat,lon):
   return (lat * 360 + lon) * 1200 * 1200
+
+def fetchTopLeftAltitude(db, lat, lon):
+  pos = posFromLatLon(lat,lon)
+  sql = db.query(" \
+    SELECT \
+      alt \
+    FROM altitude \
+    WHERE \
+      pos = " + str(pos) + "\
+   ")
+  return int(sql.getresult()[0][0])
 
 def insertTileIntoDatabase(cur, db_name, tile, lat0, lon0):
   # I use the Psycopg2 connection, with its copy_to and 
@@ -112,51 +129,24 @@ def readTileFromDatabase(db, lat0, lon0):
   
   return tile
         
-def getLatLonFromFileName(name):
-  # Split up in lat and lon:
-  p = re.compile('[NSEW]\d*')
-  [lat_str, lon_str] = p.findall(name)
-
-  # North or south?
-  if lat_str[0] == "N":
-    lat = int(lat_str[1:])
-  else: 
-    lat = -int(lat_str[1:])
-  
-  # East or west?
-  if lon_str[0] == "E":
-    lon = int(lon_str[1:])
-  else: 
-    lon = -int(lon_str[1:])
-
-  return [lat,lon]
-
-def verify(continent, north, south, west, east):
+def verify(db, number_of_tiles, files_hashes, continent, north, south, west, east):
     # For every tile, verify the bottom left coordinate.
-    for file in verify_download.files_hashes:
+    for file in files_hashes:
       # Strip .hgt.zip extension:
       file = file[1][0:-8] 
     
-      [lat,lon] = getLatLonFromFileName(file)
+      [lat,lon] = util.getLatLonFromFileName(file)
       
       # Only a smaller part of Australia (see below):
-      if ((not 'limit' in sys.argv) or (lat <= -26 and lat > -45 and lon >= 141 and lon < 155)):
+      if util.inBoundingBox(lat, lon, north, south, west, east):
       
         print "Verify " + file + "..." 
     
         # Get top left altitude from file:
-        coordinate_file = loadTile(file)[1][0]
+        coordinate_file = loadTile(continent, file)[1][0]
     
         # Get top left altitude from database:
-        pos = posFromLatLon(lat,lon)
-        sql = db.query(" \
-          SELECT \
-            alt \
-          FROM altitude \
-          WHERE \
-            pos = " + str(pos) + "\
-        ")
-        coordinate_db = int(sql.getresult()[0][0])
+        coordinate_db = fetchTopLeftAltitude(db,lat,lon)
         
         if coordinate_db != coordinate_file:
           print "Mismatch tile " + file[1]
@@ -178,34 +168,13 @@ def verify(continent, north, south, west, east):
 
 def main():
   db = connectToDatabase(database) 
-  import verify_download
+  from data import files
   
   try:
       continent = sys.argv[1]
       
   except: 
       print "Please specify the continent. Africa, Australia, Eurasia, Islands, North_America or South_America."
-
-  try:
-    north = int(sys.argv[3])
-    south = int(sys.argv[4])
-    west = int(sys.argv[5])
-    east = int(sys.argv[6])
-    print "Bounding box " + str(south) + " <= lat <= " + str(north) + " and " +  str(west) + " <= lon <= " + str(east) + "."  
-
-  except:
-    north = 90
-    south = -90
-    west = -180
-    east = 180
-    
-  files_hashes = data.util.getFilesHashes(continent)
-  
-  number_of_files = data.util.numberOfFiles(files_hashes, north, south, west, east)
-  
-  # Verify result?
-  if 'verify' in sys.argv:
-    verify(continent, north, south, west, east)
 
   # Does the user want to empty the database?
   if 'empty' in sys.argv:
@@ -214,18 +183,26 @@ def main():
     print "Done..."
     exit()
 
+  [north, south, west, east] = util.getBoundingBox(sys.argv, 3)
+      
+  files_hashes = util.getFilesHashes(continent)
+  
+  number_of_tiles = util.numberOfFiles(files_hashes, north, south, west, east)
+  
+  # Verify result?
+  if 'verify' in sys.argv:
+    verify(db, number_of_tiles, files_hashes, continent,  north, south, west, east)
+
   # If a tile name is given as the sixth argument it will resume from there.
   p = re.compile('[NSEW]\d*')
-  if(p.find(sys.argv[6])):
-    resume_from = sys.argv[6]
-  else: 
-    resume_from = ""
-  
-    # Make sure the database is empty before we start:
-    if not checkDatabaseEmpty(db):
-      print "Database is not empty. Run 'read_data empty' to empty it first."
-      exit()
-  
+  resume_from = ""
+  try:
+    if(p.find(sys.argv[6])):
+      resume_from = sys.argv[6]
+      
+  except: 
+    None
+    
   # Second database connection with psychopg2 
   db_psycopg2 = connectToDatabasePsycopg2(database)
 
@@ -233,13 +210,13 @@ def main():
 
   i = 0
 
-  for file in verify_download.files_hashes:
+  for file in files_hashes:
     # Strip .hgt.zip extension:
     file = file[1][0:-8] 
     # Get latitude and longitude from file name 
-    [lat,lon] = getLatLonFromFileName(file)
-
-    if lat <= north and lat > south and lon >= west and lon < east:
+    [lat,lon] = util.getLatLonFromFileName(file)
+    
+    if util.inBoundingBox(lat, lon, north, south, west, east):
       i = i + 1
   
       # Are we resuming?
@@ -249,11 +226,18 @@ def main():
       if resume_from == "":
 
         # Load tile from file
-        tile = loadTile(file)
+        tile = loadTile(continent, file)
 
-        print("Insert data for tile " + file + " (" + str(i) + " / " + str(number_of_tiles) + ") ...")
+        # First check if the tile is not already in the database:
 
-        insertTileIntoDatabase(db_psycopg2, "srtm" , tile, lat, lon)
+        try:
+          fetchTopLeftAltitude(db, lat, lon)
+          print("Skipping tile " + file + " (" + str(i) + " / " + str(number_of_tiles) + ") ...")
+
+        except:
+          print("Insert data for tile " + file + " (" + str(i) + " / " + str(number_of_tiles) + ") ...")
+
+          insertTileIntoDatabase(db_psycopg2, "srtm" , tile, lat, lon)
 
   print("All tiles inserted. Pleasy verify the result with python \
   read_data.py verify")
