@@ -4,16 +4,33 @@ from osgeo import gdal, gdal_array
 import database 
 import sys
 from math import sqrt
+import os
 
 import re
+import zipfile
 
 from data import util
 
 # Main functions
 
 def loadTile(continent, filename):
+  # Unzip it
+  zf = zipfile.ZipFile('data/' + continent + '/' + filename + ".hgt.zip")
+  for name in zf.namelist():
+    outfile = open('data/' + continent + '/' + name, 'wb')
+    outfile.write(zf.read(name))
+    outfile.flush()
+    outfile.close()
+  
+  # Read it
   srtm = gdal.Open('data/' + continent + '/' + filename + '.hgt')
+  
+  # Clean up
+  os.remove('data/' + continent + '/' + filename + '.hgt')
+  
   return gdal_array.DatasetReadAsArray(srtm)
+
+
 
 def createTableAltitude(db):
   tables = db.get_tables()
