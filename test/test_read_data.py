@@ -4,30 +4,31 @@ import pg
 
 import unittest
 sys.path += [os.path.abspath('.')]
-sys.path += [os.path.abspath('.') + "/src"]
 
 import database_test 
 
 from read_data import *
 
+from data.util import getLatLonFromFileName
+
 class TestImportScript(unittest.TestCase):
     def testPointsPerTile(self):
-      data = loadTile('S11E119')
+      data = loadTile('Australia', 'S11E119')
       self.assertEqual(len(data) * len(data[0]),1201*1201)
     
     def testFirstNumber(self):
-      data = loadTile('S11E119')
+      data = loadTile('Australia', 'S11E119')
       self.assertEqual(data[0][0],0)
 
     def testTileIntegrity(self):
       # The sum of altitudes of all 1201*1201 points in two tiles
      
        # Melbourne (West):
-      west = loadTile("S37E144")
+      west = loadTile('Australia', "S37E144")
       self.assertEqual(west.sum(),223277342)
 
       ## Melbourne (East):
-      east = loadTile("S37E145")
+      east = loadTile('Australia', "S37E145")
       self.assertEqual(east.sum(), 271136709)
     
     def testTileOverlap(self):
@@ -36,33 +37,33 @@ class TestImportScript(unittest.TestCase):
       #   western edge of East Melbourne tile.
       
       # Melbourne (West):
-      west = loadTile("S37E144")
+      west = loadTile('Australia', "S37E144")
 
       ## Melbourne (East):
-      east = loadTile("S37E145")
+      east = loadTile('Australia', "S37E145")
 
       for i in range(1201):
         self.assertEqual(west[i][1200] - east[i][0],0) 
 
       # Also try for north - south boundary:
-      north = loadTile("S36E144")
-      south = loadTile("S37E144")
+      north = loadTile('Australia', "S36E144")
+      south = loadTile('Australia', "S37E144")
       
       for i in range(1201):
         self.assertEqual(north[1200][i] - south[0][i],0) 
 
       # Some other area north - south boundary:
-      south = loadTile("S33E147")
-      north = loadTile("S32E147")
+      south = loadTile('Australia', "S33E147")
+      north = loadTile('Australia', "S32E147")
 
       for i in range(1201):
         self.assertEqual(north[1200][i] - south[0][i],0) 
 
       # Some other area west - east boundary:
-      west = loadTile("S33E147")
+      west = loadTile('Australia', "S33E147")
 
       ## Melbourne (East):
-      east = loadTile("S33E148")
+      east = loadTile('Australia', "S33E148")
 
       for i in range(1201):
         self.assertEqual(west[i][1200] - east[i][0],0) 
@@ -107,7 +108,7 @@ class TestDatabase(unittest.TestCase):
     # Create table
     self.assert_(createTableAltitude(self.db))
     # Load example tile
-    fulltile = loadTile('S37E145')
+    fulltile = loadTile('Australia', 'S37E145')
     tile = []
     for row in fulltile[0:11]:
       tile.append(row[0:11])
@@ -137,7 +138,7 @@ class TestDatabase(unittest.TestCase):
 
     # Some tiles contain the value -32768, which means NULL (not implemented yet)
     # Tile S27E123 has several -32768 values, for example tile[1086][462]
-    fulltile = loadTile('S27E123')
+    fulltile = loadTile('Australia', 'S27E123')
     self.assertEqual(fulltile[1086][462], -32768)
 
     # Take part of the tile around that area
@@ -165,8 +166,7 @@ class TestDatabase(unittest.TestCase):
 if __name__ == '__main__':
   # We will only do this for a PostGIS database:
     
-  try:
-    file("POSTGIS")
+  if file("POSTGIS"):
     unittest.main()
-  except:
+  else:
     print "Only tests for PostGIS database at the moment."

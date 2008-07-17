@@ -1,19 +1,3 @@
-# Script verifies that the MD5 checksum of all files is correct 
-
-# Usage:
-# You must specify the continent and you can optionally specify a bounding box.
-# python test/verify_download.py Continent [north] [south] [west] [east]
-# e.g.:
-# python test/verify_download.py Australia
-# python test/verify_download.py Eurasia 54 47 0 16
-
-# I could not find the 'official' MD5 checksums for the data so I created them 
-# myself. So if you get an error message, that could also mean the MD5 
-# checksum in this script is wrong. In that case: please let me know.
-
-import hashlib
-import sys
-import os
 # List of file names and MD5 hashes:
 # Created as follows:
 # $ md5 * > md5
@@ -14609,24 +14593,3 @@ South_America = [
     ["ef5e526b18ad05c7a929f082860223cf", "S56W071.hgt.zip"], 
     ["e2b7f6d2b1fad7e26934a472646f5252", "S56W072.hgt.zip"]
 ]
-sys.path += [os.path.abspath('.')]
-from data import util, files
-if continent == 'Australia': files_hashes = Australia
-if continent == 'Eurasia': files_hashes = Eurasia
-if continent == 'Africa': files_hashes = Africa
-if continent == 'Islands': files_hashes = Islands
-if continent == 'North_America': files_hashes = North_America
-if continent == 'South_America': files_hashes = South_America
-[north, south, west, east] = util.getBoundingBox(sys.argv, 2)
-
-files_hashes = util.getFilesHashes(continent)
-
-if __name__ == '__main__':
-  for file_hash in files_hashes:
-    [lat,lon] = util.getLatLonFromFileName(file_hash[1])
-    if util.inBoundingBox(lat, lon, north, south, west, east):
-      f = file("data/" + continent + "/" + file_hash[1])
-      if(not hashlib.md5(f.read()).hexdigest() == file_hash[0]):
-        print "Error in file " + file_hash[1]
-        exit()
-  
