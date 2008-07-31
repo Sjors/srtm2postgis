@@ -5,14 +5,10 @@ import sys
 import re
 from math import sqrt
 
+from read_data import loadTile, posFromLatLon
+from data import util
+
 # Main functions
-
-def loadTile(filename):
-  srtm = gdal.Open('data/Eurasia/' + filename + '.hgt')
-  return gdal_array.DatasetReadAsArray(srtm)
-
-def posFromLatLon(lat,lon):
-  return (lat * 360 + lon) * 1200 * 1200
 
 def writeTileCsvFile(tile, lat0, lon0, top_row = 1, bottom_row = 1200, left_col = 0, right_col = 1199 ):
   # Calculate begin position
@@ -29,25 +25,6 @@ def writeTileCsvFile(tile, lat0, lon0, top_row = 1, bottom_row = 1200, left_col 
 
   f.close() 
 
-def getLatLonFromFileName(name):
-  # Split up in lat and lon:
-  p = re.compile('[NSEW]\d*')
-  [lat_str, lon_str] = p.findall(name)
-
-  # North or south?
-  if lat_str[0] == "N":
-    lat = int(lat_str[1:])
-  else: 
-    lat = -int(lat_str[1:])
-  
-  # East or west?
-  if lon_str[0] == "E":
-    lon = int(lon_str[1:])
-  else: 
-    lon = -int(lon_str[1:])
-
-  return [lat,lon]
-
 if __name__ == '__main__':
   # We will only upload 1 tile to the Google App Engine. This will take quite 
   # a bit of time. For the offline data store, we will only "upload" the city 
@@ -55,8 +32,8 @@ if __name__ == '__main__':
   
   # For this we need tile N49E008. 
   name = "N49E008"
-  tile = loadTile(name)
-  [lat,lon] = getLatLonFromFileName(name)
+  tile = loadTile("Eurasia", name)
+  [lat,lon] = util.getLatLonFromFileName(name)
 
   if not ("online" in sys.argv or "offline" in sys.argv):
       print "Online or offline?"
@@ -74,7 +51,7 @@ if __name__ == '__main__':
       # So that 1813 records
       writeTileCsvFile(tile, lat, lon, row_top, row_bottom, col_left, col_right)
       print "Now run this command to insert the data into your local datastore:"
-      print "/path/to/app-engine-sdk/bulkload_client.py --filename ../data/tile.csv --kind Altitude --url http://localhost:8080/load --batch_size 100 --cookie 'dev_appserver_login=test@example.com:True'"
+      print "/path/to/app-engine-sdk/tools/bulkload_client.py --filename data/tile.csv --kind Altitude --url http://localhost:8080/load --batch_size 100 --cookie 'dev_appserver_login=test@example.com:True'"
 
   else:
       # Because the bulk upload script does not support resume, we will upload
