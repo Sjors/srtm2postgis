@@ -5,9 +5,10 @@ import pg
 import unittest
 sys.path += [os.path.abspath('.')]
 
-import database_test 
+import database_pg_test 
 
-from read_data import *
+import read_data_pg
+from read_data import loadTile, posFromLatLon
 
 from data.util import getLatLonFromFileName
 
@@ -71,22 +72,24 @@ class TestImportScript(unittest.TestCase):
 
 class TestDatabase(unittest.TestCase):
   def setUp(self):
-    self.db = connectToDatabase(database_test)
+    self.db_pg = read_data_pg.DatabasePg(database_pg_test.db, database_pg_test.db_user, database_pg_test.db_pass) 
     # Drop all tables
-    dropAllTables(self.db);
+    self.db_pg.dropAllTables();
+
+    self.db_psycopg2 = read_data_pg.DatabasePsycopg2(database_pg_test.db, database_pg_test.db_user, database_pg_test.db_pass) 
 
   def testDatabasePresent(self):
     # Already tested in setUp()
     self.assert_(True)
 
   def testDatabaseEmpty(self):
-    self.assert_(checkDatabaseEmpty(self.db))
+    self.assert_(self.db_pg.checkDatabaseEmpty)
   
   def testTableAltitudeExists(self):
     # Call function to create table
-    createTableAltitude(self.db)
+    self.db_pg.createTableAltitude()
 
-    tables = self.db.get_tables()
+    tables = self.db_pg.getTables()
     
     self.assert_('public.altitude' in tables) 
 
@@ -106,7 +109,8 @@ class TestDatabase(unittest.TestCase):
   
   def testInsertTileIntoDatabase(self):
     # Create table
-    self.assert_(createTableAltitude(self.db))
+    self.assert_(self.db_pg.createTableAltitude())
+
     # Load example tile
     fulltile = loadTile('Australia', 'S37E145')
     tile = []
@@ -123,18 +127,17 @@ class TestDatabase(unittest.TestCase):
 
     # Insert tile into database
     # We use psycopg2 for the connection in this case.
-    db_psycopg2 = connectToDatabasePsycopg2(database_test)
-    insertTileIntoDatabase(db_psycopg2, "srtm_test" , tile, lat, lon)
+    self.db_psycopg2.insertTile(tile, lat, lon)
 
     # Check if the tile is indeed in the database
-    tile_back = readTileFromDatabase(self.db, lat, lon)
+    tile_back = self.db_pg.readTile(lat, lon)
     for i in range(len(tile) - 1):
       for j in range(len(tile) - 1):
         self.assert_(tile_back[i][j] == tile[i+1][j])
   
   def testInsertTileWithNull(self):
     # Create table
-    self.assert_(createTableAltitude(self.db))
+    self.assert_(self.db_pg.createTableAltitude())
 
     # Some tiles contain the value -32768, which means NULL (not implemented yet)
     # Tile S27E123 has several -32768 values, for example tile[1086][462]
@@ -150,18 +153,17 @@ class TestDatabase(unittest.TestCase):
     [lat,lon] = getLatLonFromFileName("S27E123")
 
     # Insert tile into database
-    db_psycopg2 = connectToDatabasePsycopg2(database_test)
-    insertTileIntoDatabase(db_psycopg2, "srtm_test" , tile, lat, lon)
+    self.db_psycopg2.insertTile(tile, lat, lon)
 
     # Check if the tile is indeed in the database
-    tile_back = readTileFromDatabase(self.db, lat, lon)
+    tile_back = self.db_pg.readTile(lat, lon)
     for i in range(len(tile) - 1):
       for j in range(len(tile) - 1):
         self.assert_(tile_back[i][j] == tile[i+1][j])
 
   def tearDown(self):
     # Drop all tables that might have been created:
-    dropAllTables(self.db);
+    self.db_pg.dropAllTables;
 
 if __name__ == '__main__':
   # We will only do this for a PostGIS database:
