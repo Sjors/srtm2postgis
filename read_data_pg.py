@@ -158,12 +158,12 @@ def main():
   if 'verify' in sys.argv:
     verify(db_pg, number_of_tiles, files_hashes, continent,  north, south, west, east)
 
-  # If a tile name is given as the sixth argument it will resume from there.
+  # If a tile name is given as the second argument it will resume from there.
   p = re.compile('[NSEW]\d*')
   resume_from = ""
   try:
-    if(p.find(sys.argv[6])):
-      resume_from = sys.argv[6]
+    if(p.find(sys.argv[2])):
+      resume_from = sys.argv[2]
       
   except: 
     None
